@@ -1,4 +1,4 @@
-Bondedd
+# Bondedd
 
 Bondedd is a platform that brings everything happening on campus into one place so students never miss out.
 
@@ -8,7 +8,7 @@ The goal of Bondedd is simple: make campus life easier to discover.
 
 ⸻
 
-Product Vision
+## Product Vision
 
 Campus events are fragmented.
 
@@ -31,32 +31,34 @@ Students can:
 
 ⸻
 
-Core Features
+## Core Features
 
-Home Feed
+### Home Feed
 
 A personalized feed showing:
+
 	•	events happening today
 	•	trending events
 	•	recommended events
 
-Explore
+### Explore
 
 Search and browse events by:
+
 	•	category
 	•	campus
 	•	organization
 	•	date
 
-Saved Events
+### Saved Events
 
 Students can bookmark events they want to attend and view them later.
 
-Event Creation
+### Event Creation
 
 Students and organizations can submit events to share with their campus.
 
-Profiles
+### Profiles
 
 Users can manage:
 	•	interests
