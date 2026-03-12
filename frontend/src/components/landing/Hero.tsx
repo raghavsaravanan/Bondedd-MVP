@@ -1,5 +1,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 
 const G = '#B18025'
 const G06 = 'rgba(177,128,37,0.06)'
@@ -177,8 +178,7 @@ export default function Hero() {
         Find Your Place On Campus.
       </motion.p>
 
-      <motion.a
-        href="#"
+      <motion.div
         className="mt-8 inline-flex items-center gap-2 bg-black text-white font-body text-sm px-6 py-3 rounded-pill hover:bg-accent transition-colors duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -187,29 +187,31 @@ export default function Hero() {
         variants={{ hover: { scale: 1.04 } }}
         whileTap={{ scale: 0.97 }}
       >
-        Get Started
-        <motion.span className="ml-0.5 inline-flex">
-          <motion.svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            style={{ originX: 0.5, originY: 0.5 }}
-            variants={{
-              hover: { rotate: -90, y: -2 },
-            }}
-            transition={{ type: 'spring', stiffness: 420, damping: 24 }}
-          >
-            <path
-              d="M2.2 7h8.1M10.3 7L7.8 4.5M10.3 7L7.8 9.5"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </motion.svg>
-        </motion.span>
-      </motion.a>
+        <Link to="/auth" className="inline-flex items-center gap-2">
+          Get Started
+          <motion.span className="ml-0.5 inline-flex">
+            <motion.svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              style={{ originX: 0.5, originY: 0.5 }}
+              variants={{
+                hover: { rotate: -90, y: -2 },
+              }}
+              transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+            >
+              <path
+                d="M2.2 7h8.1M10.3 7L7.8 4.5M10.3 7L7.8 9.5"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </motion.svg>
+          </motion.span>
+        </Link>
+      </motion.div>
 
       <motion.div
         className="mt-14 w-full max-w-[967px] aspect-[967/567] rounded-card overflow-hidden border border-[#E8E5DF] shadow-[0_12px_48px_rgba(177,128,37,0.08)]"

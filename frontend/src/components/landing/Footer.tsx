@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const pageLinks = [
   { label: 'Home', href: '#top' },
@@ -23,36 +24,37 @@ export default function Footer() {
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true, amount: 0.3 }}
         >
-          <motion.a
-            href="#top"
+          <motion.div
             className="inline-flex w-fit items-center gap-2 rounded-pill bg-black px-6 py-3 font-body text-sm text-white transition-colors duration-300 hover:bg-accent"
             whileHover="hover"
             variants={{ hover: { scale: 1.04 } }}
             whileTap={{ scale: 0.97 }}
           >
-            Get Started
-            <motion.span className="ml-0.5 inline-flex">
-              <motion.svg
-                width="14"
-                height="14"
-                viewBox="0 0 14 14"
-                fill="none"
-                style={{ originX: 0.5, originY: 0.5 }}
-                variants={{
-                  hover: { rotate: -90, y: -2 },
-                }}
-                transition={{ type: 'spring', stiffness: 420, damping: 24 }}
-              >
-                <path
-                  d="M2.2 7h8.1M10.3 7L7.8 4.5M10.3 7L7.8 9.5"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </motion.svg>
-            </motion.span>
-          </motion.a>
+            <Link to="/auth" className="inline-flex items-center gap-2">
+              Get Started
+              <motion.span className="ml-0.5 inline-flex">
+                <motion.svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 14 14"
+                  fill="none"
+                  style={{ originX: 0.5, originY: 0.5 }}
+                  variants={{
+                    hover: { rotate: -90, y: -2 },
+                  }}
+                  transition={{ type: 'spring', stiffness: 420, damping: 24 }}
+                >
+                  <path
+                    d="M2.2 7h8.1M10.3 7L7.8 4.5M10.3 7L7.8 9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </motion.svg>
+              </motion.span>
+            </Link>
+          </motion.div>
           <p className="font-display text-[1.75rem] leading-none tracking-[-0.03em] text-accent sm:text-[2.2rem] md:text-[2.7rem]">
             Find your place on campus.
           </p>

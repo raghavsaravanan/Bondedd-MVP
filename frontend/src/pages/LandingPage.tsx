@@ -11,7 +11,7 @@ import Footer from '../components/landing/Footer'
 
 export default function LandingPage() {
   return (
-    <div className="relative bg-white min-h-screen overflow-x-hidden">
+    <div id="top" className="relative bg-white min-h-screen overflow-x-hidden">
       <Navbar />
       <Hero />
       <LogoCloud />
