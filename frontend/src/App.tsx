@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AuthPage from './pages/AuthPage'
 import CreatePage from './pages/CreatePage'
 import EventDetailPage from './pages/EventDetailPage'
@@ -8,10 +9,12 @@ import LandingPage from './pages/LandingPage'
 import ProfilePage from './pages/ProfilePage'
 import SavedPage from './pages/SavedPage'
 
-export default function App() {
+function AnimatedRoutes() {
+  const location = useLocation()
+
   return (
-    <BrowserRouter>
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/home" element={<HomePage />} />
@@ -22,6 +25,14 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+    </AnimatePresence>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AnimatedRoutes />
     </BrowserRouter>
   )
 }

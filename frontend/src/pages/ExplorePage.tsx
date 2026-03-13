@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import AppNav from '../components/app/AppNav'
 import ExploreControls from '../components/explore/ExploreControls'
 import EventListPanel from '../components/explore/EventListPanel'
 import SelectedEventPanel from '../components/explore/SelectedEventPanel'
 import ExploreMapCanvas from '../components/map/ExploreMapCanvas'
+import PageTransition from '../components/app/PageTransition'
+import { AnimatePresence, motion } from 'framer-motion'
 import { CampusPlace, ExploreEvent } from '../lib/mapData'
 import { getCampusPlaces, getExploreEvents } from '../lib/mapService'
 
@@ -28,12 +30,15 @@ export default function ExplorePage() {
     }).then((nextEvents) => {
       setEvents(nextEvents)
 
-      if (!selectedEventId && nextEvents[0]) setSelectedEventId(nextEvents[0].id)
       if (selectedEventId && !nextEvents.some((event) => event.id === selectedEventId)) {
-        setSelectedEventId(nextEvents[0]?.id ?? null)
+        setSelectedEventId(null)
       }
     })
   }, [activeCategories, bounds, searchText, selectedEventId])
+
+  const handleSelectEvent = useCallback((eventId: string) => {
+    setSelectedEventId((current) => (current === eventId ? null : eventId))
+  }, [])
 
   const selectedEvent = useMemo(
     () => events.find((event) => event.id === selectedEventId) ?? null,
@@ -41,60 +46,82 @@ export default function ExplorePage() {
   )
 
   return (
-    <main className="relative h-screen overflow-hidden bg-[#F3EDE1]">
-      {/* Map as the living canvas */}
-      <div className="absolute inset-0">
-        <ExploreMapCanvas
-          places={places}
-          events={events}
-          selectedEventId={selectedEventId}
-          hoveredEventId={hoveredEventId}
-          onEventSelect={setSelectedEventId}
-          onBoundsChange={setBounds}
-        />
-      </div>
+    <PageTransition>
+      <main className="relative h-screen overflow-hidden bg-[#F3EDE1]">
+        {/* Map as the living canvas */}
+        <div className="absolute inset-0">
+          <ExploreMapCanvas
+            places={places}
+            events={events}
+            selectedEventId={selectedEventId}
+            hoveredEventId={hoveredEventId}
+            onEventSelect={handleSelectEvent}
+            onBoundsChange={setBounds}
+          />
+        </div>
 
-      {/* Overlay stack */}
-      <div className="pointer-events-none absolute inset-0 p-4 sm:p-6">
-        <div className="mx-auto flex h-full max-w-7xl flex-col gap-4">
-          <div className="pointer-events-auto rounded-[34px] border border-[rgba(177,128,37,0.14)] bg-[rgba(255,252,247,0.85)] p-4 shadow-[0_18px_60px_rgba(92,64,9,0.16)] backdrop-blur">
-            <AppNav compact />
-            <div className="mt-3">
-              <ExploreControls
-                searchText={searchText}
-                onSearchChange={setSearchText}
-                activeCategories={activeCategories}
-                onToggleCategory={(category) =>
-                  setActiveCategories((current) =>
-                    current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
-                  )
-                }
-                listVisible={showList}
-                onToggleList={() => setShowList((prev) => !prev)}
-              />
-            </div>
-          </div>
-
-          <div className="pointer-events-none flex flex-1 flex-col gap-4 lg:flex-row lg:items-end">
-            {selectedEvent ? (
-              <div className="pointer-events-auto w-full lg:max-w-sm">
-                <SelectedEventPanel event={selectedEvent} />
-              </div>
-            ) : null}
-
-            {showList ? (
-              <div className="pointer-events-auto w-full">
-                <EventListPanel
-                  events={events}
-                  selectedEventId={selectedEventId}
-                  onSelect={setSelectedEventId}
-                  onHover={setHoveredEventId}
+        {/* Overlay stack */}
+        <div className="pointer-events-none absolute inset-0 p-4 sm:p-6">
+          <div className="mx-auto flex h-full max-w-7xl flex-col gap-4">
+            <motion.div
+              className="pointer-events-auto rounded-[34px] border border-[rgba(177,128,37,0.14)] bg-[rgba(255,252,247,0.85)] p-4 shadow-[0_18px_60px_rgba(92,64,9,0.16)] backdrop-blur"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
+            >
+              <AppNav compact />
+              <div className="mt-3">
+                <ExploreControls
+                  searchText={searchText}
+                  onSearchChange={setSearchText}
+                  activeCategories={activeCategories}
+                  onToggleCategory={(category) =>
+                    setActiveCategories((current) =>
+                      current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
+                    )
+                  }
+                  listVisible={showList}
+                  onToggleList={() => setShowList((prev) => !prev)}
                 />
               </div>
-            ) : null}
+            </motion.div>
+
+            <div className="pointer-events-none flex flex-1 flex-col gap-4 lg:flex-row lg:items-end">
+              <AnimatePresence>
+                {selectedEvent ? (
+                  <motion.div
+                    key="selected-event"
+                    className="pointer-events-auto w-full lg:max-w-sm"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }}
+                    exit={{ opacity: 0, y: 8, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+                  >
+                    <SelectedEventPanel event={selectedEvent} />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+
+              <AnimatePresence>
+                {showList ? (
+                  <motion.div
+                    key="event-list"
+                    className="pointer-events-auto w-full"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+                    exit={{ opacity: 0, y: 8, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+                  >
+                    <EventListPanel
+                      events={events}
+                      selectedEventId={selectedEventId}
+                      onSelect={handleSelectEvent}
+                      onHover={setHoveredEventId}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </PageTransition>
   )
 }

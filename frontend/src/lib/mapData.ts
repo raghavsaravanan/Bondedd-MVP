@@ -43,6 +43,11 @@ export const utdViewport = {
   zoom: 15.1,
 }
 
+export const utdMapBounds = {
+  southwest: [-96.7588, 32.9792] as [number, number],
+  northeast: [-96.7422, 32.9918] as [number, number],
+}
+
 export const utdCampusPlaces: CampusPlace[] = [
   {
     id: 'place-student-union',

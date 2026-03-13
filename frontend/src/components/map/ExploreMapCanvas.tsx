@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import mapboxgl, { GeoJSONSource } from 'mapbox-gl'
-import { CampusPlace, ExploreEvent, utdViewport } from '../../lib/mapData'
+import { CampusPlace, ExploreEvent, utdMapBounds, utdViewport } from '../../lib/mapData'
 
 type Bounds = {
   west: number
@@ -86,6 +86,9 @@ export default function ExploreMapCanvas({
       style: 'mapbox://styles/mapbox/standard',
       center: utdViewport.center,
       zoom: utdViewport.zoom,
+      minZoom: 14.3,
+      maxZoom: 18.5,
+      maxBounds: [utdMapBounds.southwest, utdMapBounds.northeast],
       pitch: 42,
       bearing: -18,
       antialias: true,
@@ -93,7 +96,7 @@ export default function ExploreMapCanvas({
 
     mapRef.current = map
 
-    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'top-right')
+    map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'bottom-right')
 
     map.on('load', () => {
       map.addSource('campus-places', {

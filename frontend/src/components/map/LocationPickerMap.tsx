@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import mapboxgl, { GeoJSONSource } from 'mapbox-gl'
-import { CampusPlace, utdViewport } from '../../lib/mapData'
+import { CampusPlace, utdMapBounds, utdViewport } from '../../lib/mapData'
 
 const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
@@ -65,6 +65,9 @@ export default function LocationPickerMap({
       style: 'mapbox://styles/mapbox/standard',
       center: selectedPoint ? [selectedPoint.longitude, selectedPoint.latitude] : utdViewport.center,
       zoom: selectedPoint ? 16 : utdViewport.zoom,
+      minZoom: 14.3,
+      maxZoom: 18.5,
+      maxBounds: [utdMapBounds.southwest, utdMapBounds.northeast],
       pitch: 28,
       bearing: -12,
       antialias: true,
