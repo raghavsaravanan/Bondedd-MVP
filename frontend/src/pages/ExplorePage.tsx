@@ -1,75 +1,100 @@
-import AppShell from '../components/app/AppShell'
-
-const filters = ['Social', 'Career', 'Tech', 'Arts', 'Wellness', 'Free food']
-const organizations = [
-  'Student Government',
-  'Comet Marketing Club',
-  'Women Who Compute',
-  'Outdoor Adventure',
-  'ATEC Creators',
-  'Pre-Law Society',
-]
+import { useEffect, useMemo, useState } from 'react'
+import AppNav from '../components/app/AppNav'
+import ExploreControls from '../components/explore/ExploreControls'
+import EventListPanel from '../components/explore/EventListPanel'
+import SelectedEventPanel from '../components/explore/SelectedEventPanel'
+import ExploreMapCanvas from '../components/map/ExploreMapCanvas'
+import { CampusPlace, ExploreEvent } from '../lib/mapData'
+import { getCampusPlaces, getExploreEvents } from '../lib/mapService'
 
 export default function ExplorePage() {
+  const [places, setPlaces] = useState<CampusPlace[]>([])
+  const [events, setEvents] = useState<ExploreEvent[]>([])
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null)
+  const [searchText, setSearchText] = useState('')
+  const [activeCategories, setActiveCategories] = useState<string[]>([])
+  const [showList, setShowList] = useState(true)
+  const [bounds, setBounds] = useState<{ west: number; south: number; east: number; north: number }>()
+
+  useEffect(() => {
+    getCampusPlaces().then(setPlaces)
+  }, [])
+
+  useEffect(() => {
+    getExploreEvents(bounds, {
+      searchText,
+      categorySlugs: activeCategories,
+    }).then((nextEvents) => {
+      setEvents(nextEvents)
+
+      if (!selectedEventId && nextEvents[0]) setSelectedEventId(nextEvents[0].id)
+      if (selectedEventId && !nextEvents.some((event) => event.id === selectedEventId)) {
+        setSelectedEventId(nextEvents[0]?.id ?? null)
+      }
+    })
+  }, [activeCategories, bounds, searchText, selectedEventId])
+
+  const selectedEvent = useMemo(
+    () => events.find((event) => event.id === selectedEventId) ?? null,
+    [events, selectedEventId],
+  )
+
   return (
-    <AppShell
-      eyebrow="Explore"
-      title="The discovery engine."
-      description="This page is where users intentionally look for things to do: search, filter, browse organizations, and eventually navigate the campus map."
-    >
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <article className="rounded-[36px] border border-[rgba(31,24,13,0.08)] bg-white p-8 shadow-[0_18px_60px_rgba(31,24,13,0.06)]">
-          <p className="font-body text-xs uppercase tracking-[0.24em] text-[#8D7A57]">Search and filter</p>
-          <h2 className="mt-2 font-display text-3xl leading-none text-[#2D2213]">Find the right event faster</h2>
-          <div className="mt-6 rounded-[26px] border border-[rgba(177,128,37,0.12)] bg-[#FFFDFC] p-4">
-            <input
-              type="text"
-              placeholder="Search events, clubs, or topics"
-              className="w-full bg-transparent font-body text-sm text-[#403421] outline-none placeholder:text-[#9C8D73]"
-            />
-          </div>
+    <main className="relative h-screen overflow-hidden bg-[#F3EDE1]">
+      {/* Map as the living canvas */}
+      <div className="absolute inset-0">
+        <ExploreMapCanvas
+          places={places}
+          events={events}
+          selectedEventId={selectedEventId}
+          hoveredEventId={hoveredEventId}
+          onEventSelect={setSelectedEventId}
+          onBoundsChange={setBounds}
+        />
+      </div>
 
-          <div className="mt-6">
-            <p className="font-body text-xs uppercase tracking-[0.22em] text-[#9C8D73]">Categories</p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {filters.map((filter) => (
-                <button
-                  key={filter}
-                  className="rounded-full border border-[rgba(177,128,37,0.12)] bg-[#FFFDFC] px-4 py-2 font-body text-sm text-[#403421] transition hover:border-accent hover:text-accent"
-                >
-                  {filter}
-                </button>
-              ))}
+      {/* Overlay stack */}
+      <div className="pointer-events-none absolute inset-0 p-4 sm:p-6">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-4">
+          <div className="pointer-events-auto rounded-[34px] border border-[rgba(177,128,37,0.14)] bg-[rgba(255,252,247,0.85)] p-4 shadow-[0_18px_60px_rgba(92,64,9,0.16)] backdrop-blur">
+            <AppNav compact />
+            <div className="mt-3">
+              <ExploreControls
+                searchText={searchText}
+                onSearchChange={setSearchText}
+                activeCategories={activeCategories}
+                onToggleCategory={(category) =>
+                  setActiveCategories((current) =>
+                    current.includes(category) ? current.filter((item) => item !== category) : [...current, category],
+                  )
+                }
+                listVisible={showList}
+                onToggleList={() => setShowList((prev) => !prev)}
+              />
             </div>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[28px] border border-[rgba(177,128,37,0.12)] bg-[#FFFDFC] p-5">
-              <p className="font-body text-xs uppercase tracking-[0.22em] text-[#9C8D73]">Date</p>
-              <p className="mt-3 font-display text-2xl leading-none text-[#2E2416]">Today to this weekend</p>
-            </div>
-            <div className="rounded-[28px] border border-[rgba(177,128,37,0.12)] bg-[#FFFDFC] p-5">
-              <p className="font-body text-xs uppercase tracking-[0.22em] text-[#9C8D73]">Campus map</p>
-              <p className="mt-3 font-display text-2xl leading-none text-[#2E2416]">Coming later</p>
-            </div>
-          </div>
-        </article>
-
-        <article className="rounded-[36px] border border-[rgba(31,24,13,0.08)] bg-white p-8 shadow-[0_18px_60px_rgba(31,24,13,0.06)]">
-          <p className="font-body text-xs uppercase tracking-[0.24em] text-[#8D7A57]">Organizations</p>
-          <h2 className="mt-2 font-display text-3xl leading-none text-[#2D2213]">Browse campus groups</h2>
-          <div className="mt-6 space-y-4">
-            {organizations.map((org) => (
-              <div
-                key={org}
-                className="rounded-[24px] border border-[rgba(177,128,37,0.12)] bg-[#FFFDFC] px-5 py-4"
-              >
-                <p className="font-display text-[1.7rem] leading-none text-[#2E2416]">{org}</p>
+          <div className="pointer-events-none flex flex-1 flex-col gap-4 lg:flex-row lg:items-end">
+            {selectedEvent ? (
+              <div className="pointer-events-auto w-full lg:max-w-sm">
+                <SelectedEventPanel event={selectedEvent} />
               </div>
-            ))}
+            ) : null}
+
+            {showList ? (
+              <div className="pointer-events-auto w-full">
+                <EventListPanel
+                  events={events}
+                  selectedEventId={selectedEventId}
+                  onSelect={setSelectedEventId}
+                  onHover={setHoveredEventId}
+                />
+              </div>
+            ) : null}
           </div>
-        </article>
-      </section>
-    </AppShell>
+        </div>
+      </div>
+    </main>
   )
 }

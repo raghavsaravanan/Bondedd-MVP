@@ -1,13 +1,6 @@
 import { ReactNode } from 'react'
-import { Link, NavLink } from 'react-router-dom'
-
-const navItems = [
-  { label: 'Home', to: '/home' },
-  { label: 'Explore', to: '/explore' },
-  { label: 'Saved', to: '/saved' },
-  { label: 'Create', to: '/create' },
-  { label: 'Profile', to: '/profile' },
-]
+import { Link } from 'react-router-dom'
+import AppNav from './AppNav'
 
 export default function AppShell({
   eyebrow,
@@ -46,23 +39,7 @@ export default function AppShell({
             </div>
           </div>
 
-          <nav className="mt-6 flex flex-wrap gap-3">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `rounded-full px-4 py-2 font-body text-sm transition ${
-                    isActive
-                      ? 'bg-black text-white'
-                      : 'border border-[rgba(177,128,37,0.12)] bg-white/80 text-[#403421] hover:border-accent hover:text-accent'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
-          </nav>
+          <AppNav compact className="mt-6" />
         </header>
 
         <div className="mt-8">{children}</div>
