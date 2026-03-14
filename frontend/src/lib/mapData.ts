@@ -62,6 +62,9 @@ export type ExploreEvent = {
   latitude: number
   longitude: number
   trendingScore: number
+  momentumScore: number
+  friendSignalCount: number
+  isLive: boolean
   isBookmarked: boolean
   rsvpStatus: 'interested' | 'going' | null
   coverImageUrl?: string
@@ -76,6 +79,38 @@ export type BondeddSearchResults = {
   organizations: OrganizationSummary[]
   events: ExploreEvent[]
   places: CampusPlace[]
+}
+
+export type MapLayerKey = 'events' | 'live' | 'trending' | 'friends' | 'organizations'
+
+export type MapOverlayMode = 'home' | 'explore' | 'saved'
+
+export type MapDrawerMode = 'none' | 'notifications' | 'create'
+
+export type MapPanelMode = 'open' | 'closed'
+
+export type MapTab = 'events' | 'people' | 'communities'
+
+export type MapUrlState = {
+  overlay: MapOverlayMode
+  drawer: MapDrawerMode
+  panel: MapPanelMode
+  tab: MapTab
+  q: string
+  categories: string[]
+  layers: MapLayerKey[]
+  event: string | null
+  org: string | null
+  person: string | null
+}
+
+export type OrganizationMapPin = {
+  organizationSlug: string
+  organizationName: string
+  latitude: number
+  longitude: number
+  eventCount: number
+  momentumScore: number
 }
 
 export type SocialProfile = {

@@ -74,6 +74,9 @@ export async function searchBondedd(query: string, campusSlug = 'ut-dallas') {
           latitude: row.latitude ?? 0,
           longitude: row.longitude ?? 0,
           trendingScore: 0,
+          momentumScore: 0,
+          friendSignalCount: 0,
+          isLive: false,
           isBookmarked: false,
           rsvpStatus: null,
         } satisfies ExploreEvent)

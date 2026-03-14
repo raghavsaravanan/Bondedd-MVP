@@ -439,7 +439,7 @@ export default function MapShellPage() {
   }
 
   function handleFriendsShortcut() {
-    const layers = mapState.layers.includes('friends') ? mapState.layers : [...mapState.layers, 'friends']
+    const layers: MapLayerKey[] = mapState.layers.includes('friends') ? mapState.layers : [...mapState.layers, 'friends']
     patchMapState({ overlay: 'home', layers })
 
     const friendEvent = data.friendsEvents[0]

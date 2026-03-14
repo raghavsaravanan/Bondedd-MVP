@@ -5,10 +5,11 @@ export default function ProfileAvatar({
 }: {
   avatarUrl: string | null | undefined
   name: string | null | undefined
-  size?: 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg'
 }) {
   const initial = (name?.trim()?.charAt(0) || 'U').toUpperCase()
-  const sizeClassName = size === 'lg' ? 'h-24 w-24 text-4xl' : 'h-9 w-9 text-sm'
+  const sizeClassName =
+    size === 'lg' ? 'h-24 w-24 text-4xl' : size === 'sm' ? 'h-8 w-8 text-xs' : 'h-9 w-9 text-sm'
 
   if (avatarUrl) {
     return (
