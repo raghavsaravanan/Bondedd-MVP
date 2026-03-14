@@ -1,5 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase'
-import { CampusPlace, ExploreEvent, ExploreFilters, mockExploreEvents, utdCampusPlaces } from './mapData'
+import { CampusPlace, ExploreEvent, ExploreFilters } from './mapData'
 
 type PlaceRpcRow = {
   id: string
@@ -43,41 +43,14 @@ type Bounds = {
   north: number
 }
 
-function normalize(text: string) {
-  return text.trim().toLowerCase()
-}
-
-function eventMatchesFilters(event: ExploreEvent, filters: ExploreFilters) {
-  const query = normalize(filters.searchText)
-  const queryMatches =
-    !query ||
-    normalize(`${event.title} ${event.summary} ${event.organizationName} ${event.placeName}`).includes(query)
-
-  const categoryMatches =
-    filters.categorySlugs.length === 0 || filters.categorySlugs.includes(event.categorySlug)
-
-  return queryMatches && categoryMatches
-}
-
-function eventWithinBounds(event: ExploreEvent, bounds?: Bounds) {
-  if (!bounds) return true
-
-  return (
-    event.longitude >= bounds.west &&
-    event.longitude <= bounds.east &&
-    event.latitude >= bounds.south &&
-    event.latitude <= bounds.north
-  )
-}
-
 export async function getCampusPlaces() {
-  if (!supabase || !isSupabaseConfigured) return utdCampusPlaces
+  if (!supabase || !isSupabaseConfigured) return []
 
   const { data, error } = await supabase.rpc('get_campus_places_geojson', {
     p_campus_slug: 'ut-dallas',
   })
 
-  if (error || !data) return utdCampusPlaces
+  if (error || !data) return []
 
   return (data as PlaceRpcRow[]).map((place) => ({
     id: place.id,
@@ -95,9 +68,7 @@ export async function getCampusPlaces() {
 }
 
 export async function getExploreEvents(bounds: Bounds | undefined, filters: ExploreFilters) {
-  if (!supabase || !isSupabaseConfigured) {
-    return mockExploreEvents.filter((event) => eventWithinBounds(event, bounds) && eventMatchesFilters(event, filters))
-  }
+  if (!supabase || !isSupabaseConfigured) return []
 
   const { data, error } = await supabase.rpc('get_explore_events', {
     p_campus_slug: 'ut-dallas',
@@ -109,9 +80,7 @@ export async function getExploreEvents(bounds: Bounds | undefined, filters: Expl
     p_search_text: filters.searchText || null,
   })
 
-  if (error || !data) {
-    return mockExploreEvents.filter((event) => eventWithinBounds(event, bounds) && eventMatchesFilters(event, filters))
-  }
+  if (error || !data) return []
 
   return (data as ExploreEventRpcRow[]).map((event) => ({
     id: event.event_id,
@@ -121,7 +90,7 @@ export async function getExploreEvents(bounds: Bounds | undefined, filters: Expl
     startsAt: event.starts_at,
     endsAt: event.ends_at,
     organizationName: event.organization_name ?? 'Campus organization',
-    organizationSlug: event.organization_slug ?? 'organization',
+    organizationSlug: event.organization_slug ?? '',
     categoryName: event.category_name ?? 'Event',
     categorySlug: event.category_slug ?? 'event',
     placeName: event.place_name ?? event.location_name ?? 'UT Dallas',
@@ -136,9 +105,7 @@ export async function getExploreEvents(bounds: Bounds | undefined, filters: Expl
 }
 
 export async function getEventDetail(eventId: string) {
-  if (!supabase || !isSupabaseConfigured) {
-    return mockExploreEvents.find((event) => event.id === eventId) ?? null
-  }
+  if (!supabase || !isSupabaseConfigured) return null
 
   const { data, error } = await supabase.rpc('get_event_detail', {
     p_event_id: eventId,
@@ -146,9 +113,7 @@ export async function getEventDetail(eventId: string) {
 
   const detail = Array.isArray(data) ? data[0] : null
 
-  if (error || !detail) {
-    return mockExploreEvents.find((event) => event.id === eventId) ?? null
-  }
+  if (error || !detail) return null
 
   return {
     id: detail.event_id,
@@ -158,7 +123,7 @@ export async function getEventDetail(eventId: string) {
     startsAt: detail.starts_at,
     endsAt: detail.ends_at,
     organizationName: detail.organization_name ?? 'Campus organization',
-    organizationSlug: detail.organization_slug ?? 'organization',
+    organizationSlug: detail.organization_slug ?? '',
     categoryName: detail.category_name ?? 'Event',
     categorySlug: detail.category_slug ?? 'event',
     placeName: detail.place_name ?? detail.location_name ?? 'UT Dallas',
@@ -173,10 +138,7 @@ export async function getEventDetail(eventId: string) {
 }
 
 export async function searchCampusPlaces(query: string) {
-  if (!supabase || !isSupabaseConfigured) {
-    const normalizedQuery = normalize(query)
-    return utdCampusPlaces.filter((place) => normalize(`${place.name} ${place.searchText}`).includes(normalizedQuery))
-  }
+  if (!supabase || !isSupabaseConfigured) return []
 
   const { data, error } = await supabase.rpc('search_campus_places', {
     p_campus_slug: 'ut-dallas',
@@ -184,10 +146,7 @@ export async function searchCampusPlaces(query: string) {
     p_limit: 8,
   })
 
-  if (error || !data) {
-    const normalizedQuery = normalize(query)
-    return utdCampusPlaces.filter((place) => normalize(`${place.name} ${place.searchText}`).includes(normalizedQuery))
-  }
+  if (error || !data) return []
 
   return (data as PlaceRpcRow[]).map((place) => ({
     id: place.id,

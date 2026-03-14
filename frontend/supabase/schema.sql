@@ -110,6 +110,13 @@ create table if not exists public.campus_places (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.profile_place_preferences (
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  place_id uuid not null references public.campus_places(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (profile_id, place_id)
+);
+
 create table if not exists public.event_submissions (
   id uuid primary key default gen_random_uuid(),
   campus_id bigint not null references public.campuses(id) on delete cascade,
@@ -198,6 +205,8 @@ create table if not exists public.event_rsvps (
   event_id uuid not null references public.events(id) on delete cascade,
   profile_id uuid not null references public.profiles(id) on delete cascade,
   status text not null check (status in ('interested', 'going', 'went')),
+  visibility text not null default 'public'
+    check (visibility in ('public', 'followers', 'private')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (event_id, profile_id)
@@ -223,6 +232,73 @@ create table if not exists public.event_metrics (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.follows (
+  id uuid primary key default gen_random_uuid(),
+  follower_id uuid not null references public.profiles(id) on delete cascade,
+  following_id uuid not null references public.profiles(id) on delete cascade,
+  status text not null default 'accepted'
+    check (status in ('pending', 'accepted', 'blocked')),
+  created_at timestamptz not null default now(),
+  constraint follows_no_self_follow check (follower_id <> following_id),
+  unique (follower_id, following_id)
+);
+
+create table if not exists public.event_invites (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  message text,
+  status text not null default 'pending'
+    check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamptz not null default now(),
+  responded_at timestamptz,
+  unique (event_id, sender_id, recipient_id)
+);
+
+create table if not exists public.event_shares (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  sender_id uuid not null references public.profiles(id) on delete cascade,
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  message text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.event_access_requests (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid not null references public.events(id) on delete cascade,
+  requester_id uuid not null references public.profiles(id) on delete cascade,
+  host_id uuid not null references public.profiles(id) on delete cascade,
+  note text,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'declined')),
+  created_at timestamptz not null default now(),
+  responded_at timestamptz,
+  unique (event_id, requester_id)
+);
+
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null check (type in (
+    'follow_request',
+    'follow_accepted',
+    'event_invite',
+    'event_share',
+    'invite_accepted',
+    'access_request',
+    'access_approved'
+  )),
+  entity_type text not null check (entity_type in (
+    'event', 'follow', 'invite', 'share', 'request'
+  )),
+  entity_id uuid not null,
+  read_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
 alter table public.event_submissions add column if not exists place_id uuid references public.campus_places(id) on delete set null;
 alter table public.event_submissions add column if not exists location_point extensions.geography(point, 4326);
 alter table public.event_submissions add column if not exists location_source text not null default 'manual_text';
@@ -236,6 +312,7 @@ alter table public.events add column if not exists location_confidence numeric(4
 create index if not exists idx_profiles_campus_id on public.profiles (campus_id);
 create index if not exists idx_organizations_campus_id on public.organizations (campus_id);
 create index if not exists idx_organization_memberships_profile_id on public.organization_memberships (profile_id);
+create index if not exists idx_profile_place_preferences_profile_id on public.profile_place_preferences (profile_id);
 create index if not exists idx_campus_places_campus_id on public.campus_places (campus_id);
 create index if not exists idx_campus_places_point on public.campus_places using gist ((point::extensions.geometry));
 create index if not exists idx_event_submissions_submitted_by on public.event_submissions (submitted_by);
@@ -252,6 +329,25 @@ create index if not exists idx_event_recommendations_profile_bucket on public.ev
 create index if not exists idx_event_rsvps_profile_id on public.event_rsvps (profile_id);
 create index if not exists idx_event_bookmarks_profile_id on public.event_bookmarks (profile_id);
 
+create index if not exists idx_follows_follower_id on public.follows (follower_id);
+create index if not exists idx_follows_following_id on public.follows (following_id);
+create index if not exists idx_follows_status on public.follows (status);
+
+create index if not exists idx_event_invites_recipient_status on public.event_invites (recipient_id, status);
+create index if not exists idx_event_invites_sender_id on public.event_invites (sender_id);
+create index if not exists idx_event_invites_event_id on public.event_invites (event_id);
+
+create index if not exists idx_event_shares_recipient_id on public.event_shares (recipient_id);
+create index if not exists idx_event_shares_sender_id on public.event_shares (sender_id);
+create index if not exists idx_event_shares_event_id on public.event_shares (event_id);
+
+create index if not exists idx_event_access_requests_host_status on public.event_access_requests (host_id, status);
+create index if not exists idx_event_access_requests_requester_id on public.event_access_requests (requester_id);
+create index if not exists idx_event_access_requests_event_id on public.event_access_requests (event_id);
+
+create index if not exists idx_notifications_user_created on public.notifications (user_id, created_at desc);
+create index if not exists idx_notifications_user_unread on public.notifications (user_id) where read_at is null;
+
 create or replace function public.is_org_manager(target_org_id uuid)
 returns boolean
 language sql
@@ -265,6 +361,22 @@ as $$
     where membership.organization_id = target_org_id
       and membership.profile_id = auth.uid()
       and membership.role in ('owner', 'admin')
+  );
+$$;
+
+create or replace function public.is_following(viewer_id uuid, target_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.follows
+    where follower_id = viewer_id
+      and following_id = target_id
+      and status = 'accepted'
   );
 $$;
 
@@ -669,6 +781,418 @@ as $$
     and coalesce(event.location_point, place.point) is not null;
 $$;
 
+create or replace function public.get_organizations_directory(
+  p_campus_id bigint default null,
+  p_campus_slug text default 'ut-dallas',
+  p_query text default null,
+  p_sort text default 'alphabetical',
+  p_limit integer default 60
+)
+returns table (
+  organization_id uuid,
+  name text,
+  slug text,
+  description text,
+  website_url text,
+  instagram_handle text,
+  is_verified boolean,
+  follower_count integer,
+  member_count integer,
+  event_count integer,
+  upcoming_event_count integer,
+  is_following boolean
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  with campus_target as (
+    select campus.id
+    from public.campuses campus
+    where campus.id = coalesce(p_campus_id, campus.id)
+      and (p_campus_id is not null or campus.slug = p_campus_slug)
+    limit 1
+  ),
+  org_rollup as (
+    select
+      organization.id as organization_id,
+      organization.name,
+      organization.slug,
+      organization.description,
+      organization.website_url,
+      organization.instagram_handle,
+      organization.is_verified,
+      count(distinct follow.profile_id)::integer as follower_count,
+      count(distinct membership.profile_id)::integer as member_count,
+      count(distinct event.id)::integer as event_count,
+      count(distinct event.id) filter (where event.starts_at >= now())::integer as upcoming_event_count,
+      coalesce(bool_or(user_follow.profile_id is not null), false) as is_following
+    from public.organizations organization
+    join campus_target on campus_target.id = organization.campus_id
+    left join public.organization_follows follow on follow.organization_id = organization.id
+    left join public.organization_memberships membership on membership.organization_id = organization.id
+    left join public.events event
+      on event.organization_id = organization.id
+      and event.status = 'published'
+    left join public.organization_follows user_follow
+      on user_follow.organization_id = organization.id
+      and user_follow.profile_id = auth.uid()
+    where (
+      p_query is null
+      or p_query = ''
+      or organization.name ilike '%' || p_query || '%'
+      or organization.slug ilike '%' || p_query || '%'
+      or coalesce(organization.description, '') ilike '%' || p_query || '%'
+      or coalesce(organization.instagram_handle, '') ilike '%' || p_query || '%'
+    )
+    group by organization.id, organization.name, organization.slug, organization.description, organization.website_url, organization.instagram_handle, organization.is_verified
+  )
+  select
+    org_rollup.organization_id,
+    org_rollup.name,
+    org_rollup.slug,
+    org_rollup.description,
+    org_rollup.website_url,
+    org_rollup.instagram_handle,
+    org_rollup.is_verified,
+    org_rollup.follower_count,
+    org_rollup.member_count,
+    org_rollup.event_count,
+    org_rollup.upcoming_event_count,
+    org_rollup.is_following
+  from org_rollup
+  order by
+    case when p_sort = 'followers' then org_rollup.follower_count end desc nulls last,
+    case when p_sort = 'activity' then org_rollup.upcoming_event_count end desc nulls last,
+    case when p_sort = 'activity' then org_rollup.event_count end desc nulls last,
+    org_rollup.is_verified desc,
+    org_rollup.name asc
+  limit greatest(p_limit, 1);
+$$;
+
+create or replace function public.get_organization_profile(
+  p_organization_slug text
+)
+returns table (
+  organization_id uuid,
+  name text,
+  slug text,
+  description text,
+  website_url text,
+  instagram_handle text,
+  is_verified boolean,
+  follower_count integer,
+  member_count integer,
+  event_count integer,
+  upcoming_event_count integer,
+  is_following boolean,
+  member_previews jsonb,
+  follower_previews jsonb
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    organization.id as organization_id,
+    organization.name,
+    organization.slug,
+    organization.description,
+    organization.website_url,
+    organization.instagram_handle,
+    organization.is_verified,
+    (
+      select count(*)::integer
+      from public.organization_follows follow
+      where follow.organization_id = organization.id
+    ) as follower_count,
+    (
+      select count(*)::integer
+      from public.organization_memberships membership
+      where membership.organization_id = organization.id
+    ) as member_count,
+    (
+      select count(*)::integer
+      from public.events event
+      where event.organization_id = organization.id
+        and event.status = 'published'
+    ) as event_count,
+    (
+      select count(*)::integer
+      from public.events event
+      where event.organization_id = organization.id
+        and event.status = 'published'
+        and event.starts_at >= now()
+    ) as upcoming_event_count,
+    exists (
+      select 1
+      from public.organization_follows follow
+      where follow.organization_id = organization.id
+        and follow.profile_id = auth.uid()
+    ) as is_following,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', member_rows.id,
+            'full_name', member_rows.full_name,
+            'username', member_rows.username,
+            'avatar_url', member_rows.avatar_url,
+            'role', member_rows.role
+          )
+        )
+        from (
+          select
+            profile.id,
+            profile.full_name,
+            profile.username,
+            profile.avatar_url,
+            membership.role,
+            case membership.role
+              when 'owner' then 0
+              when 'admin' then 1
+              else 2
+            end as role_rank,
+            membership.created_at
+          from public.organization_memberships membership
+          join public.profiles profile on profile.id = membership.profile_id
+          where membership.organization_id = organization.id
+          order by role_rank asc, membership.created_at asc
+          limit 6
+        ) member_rows
+      ),
+      '[]'::jsonb
+    ) as member_previews,
+    coalesce(
+      (
+        select jsonb_agg(
+          jsonb_build_object(
+            'id', follower_rows.id,
+            'full_name', follower_rows.full_name,
+            'username', follower_rows.username,
+            'avatar_url', follower_rows.avatar_url
+          )
+        )
+        from (
+          select
+            profile.id,
+            profile.full_name,
+            profile.username,
+            profile.avatar_url,
+            follow.created_at
+          from public.organization_follows follow
+          join public.profiles profile on profile.id = follow.profile_id
+          where follow.organization_id = organization.id
+          order by follow.created_at desc
+          limit 6
+        ) follower_rows
+      ),
+      '[]'::jsonb
+    ) as follower_previews
+  from public.organizations organization
+  where organization.slug = p_organization_slug
+  limit 1;
+$$;
+
+create or replace function public.get_organization_events(
+  p_organization_slug text,
+  p_bucket text default 'upcoming',
+  p_limit integer default 6
+)
+returns table (
+  event_id uuid,
+  title text,
+  summary text,
+  description text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  organization_name text,
+  organization_slug text,
+  category_name text,
+  category_slug text,
+  place_name text,
+  location_name text,
+  latitude double precision,
+  longitude double precision,
+  trending_score numeric,
+  is_bookmarked boolean,
+  rsvp_status text,
+  cover_image_url text
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select
+    event.id as event_id,
+    event.title,
+    event.summary,
+    event.description,
+    event.starts_at,
+    event.ends_at,
+    organization.name as organization_name,
+    organization.slug as organization_slug,
+    category.name as category_name,
+    category.slug as category_slug,
+    place.name as place_name,
+    event.location_name,
+    extensions.st_y(coalesce(event.location_point, place.point)::extensions.geometry) as latitude,
+    extensions.st_x(coalesce(event.location_point, place.point)::extensions.geometry) as longitude,
+    coalesce(metrics.trending_score, 0) as trending_score,
+    (bookmark.profile_id is not null) as is_bookmarked,
+    rsvp.status as rsvp_status,
+    event.cover_image_url
+  from public.events event
+  join public.organizations organization on organization.id = event.organization_id
+  left join public.event_categories category on category.id = event.category_id
+  left join public.campus_places place on place.id = event.place_id
+  left join public.event_metrics metrics on metrics.event_id = event.id
+  left join public.event_bookmarks bookmark
+    on bookmark.event_id = event.id
+    and bookmark.profile_id = auth.uid()
+  left join public.event_rsvps rsvp
+    on rsvp.event_id = event.id
+    and rsvp.profile_id = auth.uid()
+  where organization.slug = p_organization_slug
+    and event.status = 'published'
+    and coalesce(event.location_point, place.point) is not null
+    and (
+      (p_bucket = 'upcoming' and event.starts_at >= now())
+      or (p_bucket = 'past' and event.starts_at < now())
+    )
+  order by
+    case when p_bucket = 'upcoming' then event.starts_at end asc nulls last,
+    case when p_bucket = 'past' then event.starts_at end desc nulls last
+  limit greatest(p_limit, 1);
+$$;
+
+create or replace function public.search_bondedd(
+  p_campus_id bigint default null,
+  p_campus_slug text default 'ut-dallas',
+  p_query text default null,
+  p_limit_per_type integer default 6
+)
+returns table (
+  entity_type text,
+  entity_id text,
+  slug text,
+  title text,
+  description text,
+  subtitle text,
+  meta text,
+  is_verified boolean,
+  latitude double precision,
+  longitude double precision
+)
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  with campus_target as (
+    select campus.id
+    from public.campuses campus
+    where campus.id = coalesce(p_campus_id, campus.id)
+      and (p_campus_id is not null or campus.slug = p_campus_slug)
+    limit 1
+  ),
+  organization_matches as (
+    select
+      'organization'::text as entity_type,
+      organization.id::text as entity_id,
+      organization.slug,
+      organization.name as title,
+      coalesce(organization.description, '') as description,
+      case when organization.is_verified then 'Verified organization' else 'Organization' end as subtitle,
+      null::text as meta,
+      organization.is_verified,
+      null::double precision as latitude,
+      null::double precision as longitude
+    from public.organizations organization
+    join campus_target on campus_target.id = organization.campus_id
+    where (
+      p_query is not null
+      and p_query <> ''
+      and (
+        organization.name ilike '%' || p_query || '%'
+        or organization.slug ilike '%' || p_query || '%'
+        or coalesce(organization.description, '') ilike '%' || p_query || '%'
+        or coalesce(organization.instagram_handle, '') ilike '%' || p_query || '%'
+      )
+    )
+    order by organization.is_verified desc, organization.name asc
+    limit greatest(p_limit_per_type, 1)
+  ),
+  event_matches as (
+    select
+      'event'::text as entity_type,
+      event.id::text as entity_id,
+      organization.slug,
+      event.title,
+      coalesce(event.summary, event.description, '') as description,
+      coalesce(category.name, 'Event') as subtitle,
+      coalesce(organization.name, 'Campus organization') || '|||' ||
+      coalesce(place.name, event.location_name, 'UT Dallas') || '|||' ||
+      event.starts_at::text as meta,
+      null::boolean as is_verified,
+      extensions.st_y(coalesce(event.location_point, place.point)::extensions.geometry) as latitude,
+      extensions.st_x(coalesce(event.location_point, place.point)::extensions.geometry) as longitude
+    from public.events event
+    join campus_target on campus_target.id = event.campus_id
+    left join public.organizations organization on organization.id = event.organization_id
+    left join public.event_categories category on category.id = event.category_id
+    left join public.campus_places place on place.id = event.place_id
+    where event.status = 'published'
+      and coalesce(event.location_point, place.point) is not null
+      and (
+        p_query is not null
+        and p_query <> ''
+        and (
+          event.search_document @@ websearch_to_tsquery('english', p_query)
+          or coalesce(organization.name, '') ilike '%' || p_query || '%'
+          or coalesce(place.search_text, '') ilike '%' || p_query || '%'
+        )
+      )
+    order by event.starts_at asc
+    limit greatest(p_limit_per_type, 1)
+  ),
+  place_matches as (
+    select
+      'place'::text as entity_type,
+      place.id::text as entity_id,
+      place.slug,
+      place.name as title,
+      coalesce(place.address_text, '') as description,
+      place.short_name as subtitle,
+      place.place_kind as meta,
+      null::boolean as is_verified,
+      extensions.st_y(place.point::extensions.geometry) as latitude,
+      extensions.st_x(place.point::extensions.geometry) as longitude
+    from public.campus_places place
+    join campus_target on campus_target.id = place.campus_id
+    where place.is_active = true
+      and (
+        p_query is not null
+        and p_query <> ''
+        and (
+          place.search_text ilike '%' || p_query || '%'
+          or place.name ilike '%' || p_query || '%'
+          or place.short_name ilike '%' || p_query || '%'
+        )
+      )
+    order by place.is_landmark desc, place.name asc
+    limit greatest(p_limit_per_type, 1)
+  )
+  select * from organization_matches
+  union all
+  select * from event_matches
+  union all
+  select * from place_matches;
+$$;
+
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at
 before update on public.profiles
@@ -724,6 +1248,7 @@ alter table public.campus_domains enable row level security;
 alter table public.profiles enable row level security;
 alter table public.interests enable row level security;
 alter table public.profile_interests enable row level security;
+alter table public.profile_place_preferences enable row level security;
 alter table public.event_categories enable row level security;
 alter table public.organizations enable row level security;
 alter table public.organization_memberships enable row level security;
@@ -736,6 +1261,62 @@ alter table public.event_reminders enable row level security;
 alter table public.event_rsvps enable row level security;
 alter table public.event_recommendations enable row level security;
 alter table public.event_metrics enable row level security;
+alter table public.follows enable row level security;
+alter table public.event_invites enable row level security;
+alter table public.event_shares enable row level security;
+alter table public.event_access_requests enable row level security;
+alter table public.notifications enable row level security;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'avatars',
+  'avatars',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "avatar images are publicly readable" on storage.objects;
+create policy "avatar images are publicly readable"
+on storage.objects for select
+to public
+using (bucket_id = 'avatars');
+
+drop policy if exists "users can upload their own avatars" on storage.objects;
+create policy "users can upload their own avatars"
+on storage.objects for insert
+to authenticated
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "users can update their own avatars" on storage.objects;
+create policy "users can update their own avatars"
+on storage.objects for update
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+drop policy if exists "users can delete their own avatars" on storage.objects;
+create policy "users can delete their own avatars"
+on storage.objects for delete
+to authenticated
+using (
+  bucket_id = 'avatars'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
 
 drop policy if exists "campuses are readable by authenticated users" on public.campuses;
 create policy "campuses are readable by authenticated users"
@@ -771,6 +1352,13 @@ using (true);
 drop policy if exists "users can manage their own interests" on public.profile_interests;
 create policy "users can manage their own interests"
 on public.profile_interests for all
+to authenticated
+using (auth.uid() = profile_id)
+with check (auth.uid() = profile_id);
+
+drop policy if exists "users can manage their own place preferences" on public.profile_place_preferences;
+create policy "users can manage their own place preferences"
+on public.profile_place_preferences for all
 to authenticated
 using (auth.uid() = profile_id)
 with check (auth.uid() = profile_id);
@@ -900,6 +1488,144 @@ on public.event_metrics for select
 to authenticated
 using (true);
 
+drop policy if exists "users can see public rsvps" on public.event_rsvps;
+create policy "users can see public rsvps"
+on public.event_rsvps for select
+to authenticated
+using (visibility = 'public');
+
+drop policy if exists "followers can see follower-visible rsvps" on public.event_rsvps;
+create policy "followers can see follower-visible rsvps"
+on public.event_rsvps for select
+to authenticated
+using (
+  visibility = 'followers'
+  and public.is_following(auth.uid(), profile_id)
+);
+
+drop policy if exists "users can view follows involving them" on public.follows;
+create policy "users can view follows involving them"
+on public.follows for select
+to authenticated
+using (
+  auth.uid() = follower_id
+  or auth.uid() = following_id
+);
+
+drop policy if exists "users can follow others" on public.follows;
+create policy "users can follow others"
+on public.follows for insert
+to authenticated
+with check (auth.uid() = follower_id);
+
+drop policy if exists "users can update their own follow relationships" on public.follows;
+create policy "users can update their own follow relationships"
+on public.follows for update
+to authenticated
+using (
+  auth.uid() = follower_id
+  or auth.uid() = following_id
+);
+
+drop policy if exists "users can unfollow" on public.follows;
+create policy "users can unfollow"
+on public.follows for delete
+to authenticated
+using (auth.uid() = follower_id);
+
+drop policy if exists "users can view their invites" on public.event_invites;
+create policy "users can view their invites"
+on public.event_invites for select
+to authenticated
+using (
+  auth.uid() = sender_id
+  or auth.uid() = recipient_id
+);
+
+drop policy if exists "users can send invites" on public.event_invites;
+create policy "users can send invites"
+on public.event_invites for insert
+to authenticated
+with check (auth.uid() = sender_id);
+
+drop policy if exists "recipients can respond to invites" on public.event_invites;
+create policy "recipients can respond to invites"
+on public.event_invites for update
+to authenticated
+using (auth.uid() = recipient_id);
+
+drop policy if exists "senders can delete pending invites" on public.event_invites;
+create policy "senders can delete pending invites"
+on public.event_invites for delete
+to authenticated
+using (auth.uid() = sender_id and status = 'pending');
+
+drop policy if exists "users can view their shares" on public.event_shares;
+create policy "users can view their shares"
+on public.event_shares for select
+to authenticated
+using (
+  auth.uid() = sender_id
+  or auth.uid() = recipient_id
+);
+
+drop policy if exists "users can share events" on public.event_shares;
+create policy "users can share events"
+on public.event_shares for insert
+to authenticated
+with check (auth.uid() = sender_id);
+
+drop policy if exists "senders can delete their shares" on public.event_shares;
+create policy "senders can delete their shares"
+on public.event_shares for delete
+to authenticated
+using (auth.uid() = sender_id);
+
+drop policy if exists "users can view their access requests" on public.event_access_requests;
+create policy "users can view their access requests"
+on public.event_access_requests for select
+to authenticated
+using (
+  auth.uid() = requester_id
+  or auth.uid() = host_id
+);
+
+drop policy if exists "users can request event access" on public.event_access_requests;
+create policy "users can request event access"
+on public.event_access_requests for insert
+to authenticated
+with check (auth.uid() = requester_id);
+
+drop policy if exists "hosts can respond to access requests" on public.event_access_requests;
+create policy "hosts can respond to access requests"
+on public.event_access_requests for update
+to authenticated
+using (auth.uid() = host_id);
+
+drop policy if exists "requesters can cancel their requests" on public.event_access_requests;
+create policy "requesters can cancel their requests"
+on public.event_access_requests for delete
+to authenticated
+using (auth.uid() = requester_id and status = 'pending');
+
+drop policy if exists "users can view their notifications" on public.notifications;
+create policy "users can view their notifications"
+on public.notifications for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "authenticated users can create notifications" on public.notifications;
+create policy "authenticated users can create notifications"
+on public.notifications for insert
+to authenticated
+with check (auth.uid() = actor_id);
+
+drop policy if exists "users can mark notifications as read" on public.notifications;
+create policy "users can mark notifications as read"
+on public.notifications for update
+to authenticated
+using (auth.uid() = user_id);
+
 insert into public.campuses (slug, name, primary_domain)
 values ('ut-dallas', 'The University of Texas at Dallas', 'utdallas.edu')
 on conflict (slug) do update
@@ -920,14 +1646,15 @@ on conflict (domain) do nothing;
 
 insert into public.interests (slug, name)
 values
-  ('tech', 'Tech'),
-  ('career', 'Career'),
-  ('arts', 'Arts'),
-  ('wellness', 'Wellness'),
-  ('culture', 'Culture'),
-  ('sports', 'Sports'),
-  ('food', 'Food'),
-  ('community', 'Community')
+  ('startups-founders', 'Startups & Founders'),
+  ('tech-hackathons', 'Tech & Hackathons'),
+  ('arts-creative', 'Arts & Creative'),
+  ('music-performances', 'Music & Performances'),
+  ('sports-fitness', 'Sports & Fitness'),
+  ('culture-community', 'Culture & Community'),
+  ('premed-academic', 'Pre-Med / Academic'),
+  ('social-events', 'Social Events'),
+  ('wellness', 'Wellness')
 on conflict (slug) do update
 set name = excluded.name;
 

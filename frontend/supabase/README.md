@@ -8,13 +8,14 @@ Steps:
 
 1. Open the SQL editor in the Supabase project `gydjbbcqakaufdoehkqc`.
 2. Run `frontend/supabase/schema.sql`.
-3. Confirm the seed tables contain UT Dallas, event categories, and interests.
-4. Keep email confirmation enabled in Supabase Auth for student signup.
+3. Run `frontend/supabase/seed_test_events.sql` to load ten published UT Dallas test events for Home, Explore, and Event Detail.
+4. Confirm the seed tables contain UT Dallas, event categories, interests, and the test event set.
+5. Keep email confirmation enabled in Supabase Auth for student signup.
 
 ## What the schema covers
 
 - Auth and onboarding:
-  - `campuses`, `campus_domains`, `profiles`, `interests`, `profile_interests`
+  - `campuses`, `campus_domains`, `profiles`, `interests`, `profile_interests`, `profile_place_preferences`
 - Explore and organizations:
   - `event_categories`, `organizations`, `organization_memberships`, `organization_follows`, `campus_places`
 - Content creation workflow:
@@ -25,10 +26,12 @@ Steps:
 - Home ranking:
   - `event_recommendations` for personalized buckets
   - `event_metrics` for bookmark and RSVP-derived trending scores
+- Profile media:
+  - public `avatars` storage bucket for profile photos
 - Map and geospatial queries:
   - PostGIS-backed `campus_places`
   - geospatial event fields on `event_submissions` and `events`
-  - RPCs: `get_campus_places_geojson`, `search_campus_places`, `get_explore_events`, `get_event_detail`
+  - RPCs: `get_campus_places_geojson`, `search_campus_places`, `get_explore_events`, `get_event_detail`, `get_organizations_directory`, `get_organization_profile`, `get_organization_events`, `search_bondedd`
 
 ## Product workflow
 
@@ -43,13 +46,19 @@ Steps:
 6. Explore queries `get_explore_events(...)` for viewport-based map results and `get_campus_places_geojson(...)` for UTD overlays.
 7. Create can use `search_campus_places(...)` for place search.
 8. Explore event cards can open `/events/:eventId`, backed by `get_event_detail(...)`.
-9. Saved queries `event_bookmarks`, `event_reminders`, and upcoming RSVP data.
-10. Home can be assembled from:
-   - `today`: published events happening today
-   - `trending`: published events ordered by `event_metrics.trending_score`
-   - `recommended`: rows in `event_recommendations`
-   - `upcoming`: next published events ordered by `starts_at`
-11. Profile reads `profiles`, `profile_interests`, `organization_follows`, and saved data.
+9. Organizations can open `/organizations/:slug`, backed by `get_organization_profile(...)` and `get_organization_events(...)`.
+10. Global search can open `/search?q=...`, backed by `search_bondedd(...)`.
+11. Saved queries `event_bookmarks`, `event_reminders`, and upcoming RSVP data.
+12. Home can be assembled from:
+  - `today`: published events happening today
+  - `trending`: published events ordered by `event_metrics.trending_score`
+  - `recommended`: rows in `event_recommendations`
+  - `upcoming`: next published events ordered by `starts_at`
+13. Profile reads `profiles`, `profile_interests`, `organization_follows`, saved data, and the `avatars` bucket.
+14. Onboarding writes:
+   - selected interests to `profile_interests`
+   - frequent campus places to `profile_place_preferences`
+   - campus card data to `profiles`
 
 ## Important note
 

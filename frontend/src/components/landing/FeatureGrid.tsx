@@ -275,6 +275,8 @@ const cardVariants = {
 const CX = 250
 const CY = 210
 const R = 155
+const HUB_RADIUS = 44
+const NODE_RADIUS = 21
 
 const spokeNodes = [
   { label: 'Clubs', angle: 0 },
@@ -288,6 +290,19 @@ const spokeNodes = [
 function spokePosition(angleDeg: number) {
   const rad = ((angleDeg - 90) * Math.PI) / 180
   return { x: CX + R * Math.cos(rad), y: CY + R * Math.sin(rad) }
+}
+
+function spokeLinePosition(angleDeg: number) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180
+  const cos = Math.cos(rad)
+  const sin = Math.sin(rad)
+
+  return {
+    x1: CX + HUB_RADIUS * cos,
+    y1: CY + HUB_RADIUS * sin,
+    x2: CX + (R - NODE_RADIUS) * cos,
+    y2: CY + (R - NODE_RADIUS) * sin,
+  }
 }
 
 const spokeIcons: Record<string, JSX.Element> = {
@@ -440,14 +455,14 @@ export default function FeatureGrid() {
               <circle cx={CX} cy={CY} r={R + 28} fill={G04} />
 
               {spokeNodes.map((node, i) => {
-                const { x, y } = spokePosition(node.angle)
+                const { x1, y1, x2, y2 } = spokeLinePosition(node.angle)
                 return (
                   <motion.line
                     key={node.label}
-                    x1={CX}
-                    y1={CY}
-                    x2={x}
-                    y2={y}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
                     stroke={G}
                     strokeWidth="1.4"
                     strokeDasharray="6 5"
@@ -485,7 +500,7 @@ export default function FeatureGrid() {
               return (
                 <motion.div
                   key={node.label}
-                  className="absolute flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1.5"
+                  className="absolute -translate-x-1/2 -translate-y-1/2"
                   style={{ left: `${pctX}%`, top: `${pctY}%` }}
                   initial={{ scale: 0, opacity: 0 }}
                   animate={
@@ -501,10 +516,10 @@ export default function FeatureGrid() {
                     damping: 22,
                   }}
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E8E5DF] bg-white shadow-sm sm:h-12 sm:w-12">
+                  <div className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#E8E5DF] bg-white shadow-sm sm:h-12 sm:w-12">
                     {spokeIcons[node.label]}
                   </div>
-                  <span className="whitespace-nowrap font-body text-[11px] text-muted sm:text-xs">
+                  <span className="absolute left-1/2 top-[calc(100%+10px)] -translate-x-1/2 whitespace-nowrap font-body text-[11px] text-muted sm:text-xs">
                     {node.label}
                   </span>
                 </motion.div>

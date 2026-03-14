@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import { ExploreEvent } from '../../lib/mapData'
+import RsvpButtons from '../ui/RsvpButtons'
+import { primaryButtonClass, secondaryButtonClass } from '../ui/buttonStyles'
 
-export default function SelectedEventPanel({ event }: { event: ExploreEvent | null }) {
+export default function SelectedEventPanel({ event, onRsvpUpdate }: { event: ExploreEvent | null; onRsvpUpdate?: () => void }) {
   if (!event) {
     return (
       <aside className="pointer-events-auto w-full max-w-md rounded-[32px] border border-[rgba(177,128,37,0.14)] bg-[rgba(255,252,247,0.9)] p-5 text-left shadow-[0_18px_60px_rgba(92,64,9,0.14)] backdrop-blur">
@@ -14,9 +16,10 @@ export default function SelectedEventPanel({ event }: { event: ExploreEvent | nu
     )
   }
 
-  const directionsUrl = event.latitude && event.longitude
-    ? `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`
-    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.placeName)}`
+  const directionsUrl =
+    event.latitude && event.longitude
+      ? `https://www.google.com/maps/dir/?api=1&destination=${event.latitude},${event.longitude}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.placeName)}`
 
   return (
     <aside className="pointer-events-auto w-full max-w-md rounded-[32px] border border-[rgba(177,128,37,0.14)] bg-[rgba(255,252,247,0.9)] p-5 text-left shadow-[0_18px_60px_rgba(92,64,9,0.14)] backdrop-blur">
@@ -24,24 +27,34 @@ export default function SelectedEventPanel({ event }: { event: ExploreEvent | nu
       <h2 className="mt-2 font-display text-3xl leading-none text-[#2D2213]">{event.title}</h2>
       <p className="mt-3 font-body text-sm leading-relaxed text-[#5C5240]">{event.description || event.summary}</p>
       <div className="mt-4 space-y-2 font-body text-sm text-[#5C5240]">
-        <p>{event.organizationName}</p>
+        <p>
+          {event.organizationSlug ? (
+            <Link to={`/organizations/${event.organizationSlug}`} className="transition hover:text-accent">
+              {event.organizationName}
+            </Link>
+          ) : (
+            event.organizationName
+          )}
+        </p>
         <p>{event.placeName}</p>
         <p>{new Date(event.startsAt).toLocaleString()}</p>
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          to={`/events/${event.id}`}
-          className="inline-flex rounded-full bg-black px-4 py-2 font-body text-sm text-white transition hover:bg-accent"
-        >
+      <div className="mt-4">
+        <RsvpButtons
+          eventId={event.id}
+          initialRsvpStatus={event.rsvpStatus}
+          initialBookmarked={event.isBookmarked}
+          onUpdate={onRsvpUpdate}
+          compact
+        />
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-3">
+        <Link to={`/events/${event.id}`} className={primaryButtonClass}>
           Open event
         </Link>
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex rounded-full border border-[rgba(177,128,37,0.18)] px-4 py-2 font-body text-sm text-[#403421] transition hover:border-accent hover:text-accent"
-        >
+        <a href={directionsUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
           Get directions
         </a>
       </div>

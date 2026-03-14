@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { resolveCampusFromEmail, UT_DALLAS_CAMPUS } from '../lib/campusDirectory'
+import { getCurrentProfile } from '../lib/profileService'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 
 type AuthMode = 'sign-up' | 'sign-in'
@@ -134,7 +135,8 @@ export default function AuthPage() {
       title: 'Signed in',
       body: 'Your session is active and your UTD account is recognized.',
     })
-    navigate('/home')
+    const profile = await getCurrentProfile()
+    navigate(profile?.onboardingCompleted ? '/home' : '/onboarding')
   }
 
   return (

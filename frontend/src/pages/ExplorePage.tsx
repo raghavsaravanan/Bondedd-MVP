@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AppNav from '../components/app/AppNav'
 import ExploreControls from '../components/explore/ExploreControls'
 import EventListPanel from '../components/explore/EventListPanel'
@@ -8,20 +8,46 @@ import PageTransition from '../components/app/PageTransition'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CampusPlace, ExploreEvent } from '../lib/mapData'
 import { getCampusPlaces, getExploreEvents } from '../lib/mapService'
+import { useSearchParams } from 'react-router-dom'
 
 export default function ExplorePage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [places, setPlaces] = useState<CampusPlace[]>([])
   const [events, setEvents] = useState<ExploreEvent[]>([])
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null)
   const [hoveredEventId, setHoveredEventId] = useState<string | null>(null)
-  const [searchText, setSearchText] = useState('')
+  const [searchText, setSearchText] = useState(() => searchParams.get('search') ?? '')
   const [activeCategories, setActiveCategories] = useState<string[]>([])
   const [showList, setShowList] = useState(true)
   const [bounds, setBounds] = useState<{ west: number; south: number; east: number; north: number }>()
+  const requestedEventIdRef = useRef(searchParams.get('event'))
 
   useEffect(() => {
     getCampusPlaces().then(setPlaces)
   }, [])
+
+  useEffect(() => {
+    const searchParam = searchParams.get('search') ?? ''
+    setSearchText((current) => (current === searchParam ? current : searchParam))
+    requestedEventIdRef.current = searchParams.get('event')
+  }, [searchParams])
+
+  useEffect(() => {
+    const normalizedSearch = searchText.trim()
+    const currentSearch = searchParams.get('search') ?? ''
+
+    if (normalizedSearch === currentSearch) return
+
+    const nextParams = new URLSearchParams(searchParams)
+
+    if (normalizedSearch) {
+      nextParams.set('search', normalizedSearch)
+    } else {
+      nextParams.delete('search')
+    }
+
+    setSearchParams(nextParams, { replace: true })
+  }, [searchParams, searchText, setSearchParams])
 
   useEffect(() => {
     getExploreEvents(bounds, {
@@ -44,6 +70,16 @@ export default function ExplorePage() {
     () => events.find((event) => event.id === selectedEventId) ?? null,
     [events, selectedEventId],
   )
+
+  useEffect(() => {
+    const requestedEventId = requestedEventIdRef.current
+    if (!requestedEventId) return
+
+    if (events.some((event) => event.id === requestedEventId)) {
+      setSelectedEventId(requestedEventId)
+      requestedEventIdRef.current = null
+    }
+  }, [events])
 
   return (
     <PageTransition>
@@ -68,7 +104,7 @@ export default function ExplorePage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } }}
             >
-              <AppNav compact />
+              <AppNav compact scrolled />
               <div className="mt-3">
                 <ExploreControls
                   searchText={searchText}

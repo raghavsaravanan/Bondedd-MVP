@@ -1,4 +1,5 @@
 import { ChangeEvent } from 'react'
+import { secondaryButtonClass } from '../ui/buttonStyles'
 
 const categories = ['social', 'career', 'tech', 'arts', 'wellness', 'sports', 'academic']
 
@@ -52,7 +53,7 @@ export default function ExploreControls({
           <button
             type="button"
             onClick={onToggleList}
-            className="ml-auto rounded-full border border-[rgba(177,128,37,0.18)] bg-white px-4 py-2 font-body text-sm text-[#403421] transition hover:border-accent hover:text-accent"
+            className={`ml-auto ${secondaryButtonClass}`}
           >
             {listVisible ? 'Hide list' : 'Show list'}
           </button>

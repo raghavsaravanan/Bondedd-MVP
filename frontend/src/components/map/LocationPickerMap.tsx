@@ -54,6 +54,21 @@ export default function LocationPickerMap({
 
   const placeData = useMemo(() => placesGeoJSON(places), [places])
   const pointData = useMemo(() => selectedPointGeoJSON(selectedPoint), [selectedPoint])
+  const onSelectPointRef = useRef(onSelectPoint)
+  const placeDataRef = useRef(placeData)
+  const pointDataRef = useRef(pointData)
+
+  useEffect(() => {
+    onSelectPointRef.current = onSelectPoint
+  }, [onSelectPoint])
+
+  useEffect(() => {
+    placeDataRef.current = placeData
+  }, [placeData])
+
+  useEffect(() => {
+    pointDataRef.current = pointData
+  }, [pointData])
 
   useEffect(() => {
     if (!hasToken || !containerRef.current || mapRef.current) return
@@ -79,12 +94,12 @@ export default function LocationPickerMap({
     map.on('load', () => {
       map.addSource('create-places', {
         type: 'geojson',
-        data: placeData,
+        data: placeDataRef.current,
       })
 
       map.addSource('selected-location', {
         type: 'geojson',
-        data: pointData,
+        data: pointDataRef.current,
       })
 
       map.addLayer({
@@ -113,7 +128,7 @@ export default function LocationPickerMap({
       })
 
       map.on('click', (event) => {
-        onSelectPoint({
+        onSelectPointRef.current({
           latitude: event.lngLat.lat,
           longitude: event.lngLat.lng,
         })
@@ -124,7 +139,7 @@ export default function LocationPickerMap({
       map.remove()
       mapRef.current = null
     }
-  }, [hasToken, onSelectPoint, placeData, pointData, selectedPoint])
+  }, [hasToken])
 
   useEffect(() => {
     const map = mapRef.current
@@ -143,6 +158,17 @@ export default function LocationPickerMap({
     const source = map.getSource('selected-location') as GeoJSONSource | undefined
     source?.setData(pointData)
   }, [pointData])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !selectedPoint) return
+
+    map.easeTo({
+      center: [selectedPoint.longitude, selectedPoint.latitude],
+      duration: 450,
+      zoom: Math.max(map.getZoom(), 16),
+    })
+  }, [selectedPoint])
 
   if (!hasToken) {
     return (
