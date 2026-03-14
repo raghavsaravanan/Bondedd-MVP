@@ -88,6 +88,11 @@ There is no backend in this repo yet; it is purely the marketing front-end.
 
 ### Getting started
 
+.env setup: 
+VITE_SUPABASE_URL=https://gydjbbcqakaufdoehkqc.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_CziMIZFJP2ldscKOvwnBeQ_uUUrxS6I
+VITE_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoicmFnaGF2c2FyYXZhbmFuIiwiYSI6ImNtbW83NG5tYzBiMDEycnEyZnJmdXpkejEifQ.bqlU5RXlpSdSwgucnS9MvA
+
 From the `frontend` folder:
 
 ```bash
