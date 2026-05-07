@@ -174,7 +174,3 @@ VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_anon_key
 VITE_MAPBOX_TOKEN=your_mapbox_token
 ```
-
----
-
-Built by [Raghav Saravanan](https://github.com/raghavsaravanan) — CS @ University of Texas at Dallas
